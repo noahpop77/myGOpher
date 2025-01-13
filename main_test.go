@@ -2,66 +2,63 @@ package main
 
 import (
 	"fmt"
+	"strconv"
 	"testing"
 )
 
-func Test(t *testing.T) {
+func TestSendMessage(t *testing.T) {
 	tests := []struct {
-		name           string
-		membershipType string
-		message        string
-		expectResult   string
-		expectSuccess  bool
+		formatter Formatter
+		expected  string
 	}{
-		{"Syl", "standard", "Hello, Kaladin!", "Hello, Kaladin!", true},
-		{"Pattern", "premium", "You are not as good with patterns... You are abstract. You think in lies and tell them to yourselves. That is fascinating, but it is not good for patterns.", "You are not as good with patterns... You are abstract. You think in lies and tell them to yourselves. That is fascinating, but it is not good for patterns.", true},
-		{"Dalinar", "standard", "I will take responsibility for what I have done. If I must fall, I will rise each time a better man.", "I will take responsibility for what I have done. If I must fall, I will rise each time a better man.", true},
+		{PlainText{message: "Hello, World!"}, "Hello, World!"},
+		{Bold{message: "Bold Message"}, "**Bold Message**"},
+		{Code{message: "Code Message"}, "`Code Message`"},
 	}
+
 	if withSubmit {
-		submitCases := []struct {
-			name           string
-			membershipType string
-			message        string
-			expectResult   string
-			expectSuccess  bool
-		}{
-			{"Pattern", "standard", "Humans can see the world as it is not. It is why your lies can be so strong. You are able to not admit that they are lies.", "", false},
-			{"Dabbid", "premium", ".........................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................", "", false},
-		}
-		tests = append(tests, submitCases...)
+		tests = append(tests,
+			struct {
+				formatter Formatter
+				expected  string
+			}{Code{message: ""}, "``"},
+			struct {
+				formatter Formatter
+				expected  string
+			}{Bold{message: ""}, "****"},
+			struct {
+				formatter Formatter
+				expected  string
+			}{PlainText{message: ""}, ""},
+		)
 	}
 
 	passCount := 0
 	failCount := 0
 
-	for _, tc := range tests {
-		user := newUser(tc.name, tc.membershipType)
-		result, pass := user.SendMessage(tc.message, len(tc.message))
-		if tc.expectSuccess != pass || result != tc.expectResult {
-			failCount++
-			t.Errorf(`---------------------------------
-Test Failed:
-* user:               %s
-* membership type:    %s
-* message:            %s
-* expected result:    %s
-* expected success:   %v
-* actual result:      %s
-* actual success:     %v
-`, tc.name, tc.membershipType, tc.message, tc.expectResult, tc.expectSuccess, result, pass)
-		} else {
-			passCount++
-			fmt.Printf(`---------------------------------
-Test Passed:
-* user:               %s
-* membership type:    %s
-* message:            %s
-* expected result:    %s
-* expected success:   %v
-* actual result:      %s
-* actual success:     %v
-`, tc.name, tc.membershipType, tc.message, tc.expectResult, tc.expectSuccess, result, pass)
-		}
+	for i, test := range tests {
+		testName := "Test Case " + strconv.Itoa(i+1)
+		t.Run(testName, func(t *testing.T) {
+			formattedMessage := SendMessage(test.formatter)
+			if formattedMessage != test.expected {
+				failCount++
+				t.Errorf(`---------------------------------
+%s
+Inputs:     (%v)
+Expecting:  %v
+Actual:     %v
+Fail`, testName, test.formatter, test.expected, formattedMessage)
+			} else {
+				passCount++
+				fmt.Printf(`---------------------------------
+%s
+Inputs:     (%v)
+Expecting:  %v
+Actual:     %v
+Pass
+`, testName, test.formatter, test.expected, formattedMessage)
+			}
+		})
 	}
 
 	fmt.Println("---------------------------------")
